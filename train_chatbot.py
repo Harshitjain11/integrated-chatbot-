@@ -1,42 +1,37 @@
 import json
 import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import make_pipeline
 
-# Load intents.json
-with open("data/intents.json", "r") as file:
-    data = json.load(file)
+# Load intents
+with open("data/intents.json", "r", encoding="utf-8") as f:
+    intents = json.load(f)["intents"]
 
-# Prepare training data
-texts = []
-labels = []
-
-for intent in data["intents"]:
+texts, labels = [], []
+for intent in intents:
     for pattern in intent["patterns"]:
         texts.append(pattern.lower())
         labels.append(intent["tag"])
 
 # Encode labels
-label_encoder = LabelEncoder()
-y = label_encoder.fit_transform(labels)
+le = LabelEncoder()
+y = le.fit_transform(labels)
 
-# Vectorize texts
-vectorizer = TfidfVectorizer()
-X = vectorizer.fit_transform(texts)
+# Create pipeline
+model = make_pipeline(
+    TfidfVectorizer(ngram_range=(1, 2), stop_words="english"),
+    LogisticRegression(max_iter=2000)
+)
 
-# Train model
-model = MultinomialNB()
-model.fit(X, y)
+model.fit(texts, y)
 
-# Save model and vectorizer
-model_data = {
-    "model": model,
-    "vectorizer": vectorizer,
-    "label_encoder": label_encoder
-}
+# Save everything together
+with open("data/chatbot_model.pkl", "wb") as f:
+    pickle.dump({
+        "model": model,
+        "label_encoder": le
+    }, f)
 
-with open("data/intents.json", "r", encoding="utf-8") as file:
-    pickle.dump(model_data, file)
-
-print("✅ Model trained and saved successfully!")
+print("✅ Improved model trained and saved successfully!")

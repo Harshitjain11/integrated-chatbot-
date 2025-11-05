@@ -2,38 +2,48 @@
   "intents": [
     {
       "tag": "greeting",
-      "patterns": ["hi", "hey", "hello", "good morning", "good evening"],
-      "responses": ["Hey there! 😊", "Hello! How can I help you today?", "Hi! What can I do for you?"]
+      "patterns": [
+        "hi", "hello", "hey", "good morning", "good evening", "yo", "what's up", "hey there", "hi there", "howdy"
+      ],
+      "responses": ["Hello! How can I help you today?", "Hi there! What would you like to do today?"]
     },
     {
-      "tag": "goodbye",
-      "patterns": ["bye", "see you", "goodbye", "take care"],
-      "responses": ["Goodbye! Have a great day!", "See you soon 👋", "Bye! Come back again!"]
+      "tag": "new_order",
+      "patterns": [
+        "I want to order", "Order food", "Can I order", "Place an order", "I want food", "Order something", "I need to order food", "Get me some food"
+      ],
+      "responses": ["Sure, what would you like to order?", "Let's start your order! What would you like to have?"]
     },
     {
-      "tag": "thanks",
-      "patterns": ["thanks", "thank you", "thx", "thanks a lot"],
-      "responses": ["You're welcome! 😊", "Happy to help!", "Anytime!"]
+      "tag": "order_item",
+      "patterns": [
+        "Add pizza", "1 burger", "Get me fries", "Add dosa", "I want samosa", "Order 2 cokes", "I want to add biryani", "Add sandwich"
+      ],
+      "responses": ["Item added to cart! Want to add more or confirm?", "Got it! Added to your order."]
     },
     {
-      "tag": "order_help",
-      "patterns": ["how to order", "place an order", "I want to order food", "order something"],
-      "responses": ["To order, just select your restaurant and add items to your cart.", "You can place an order by clicking on the 'Order Now' button on your favorite dish."]
+      "tag": "confirm_order",
+      "patterns": [
+        "Confirm", "Place order", "Yes confirm", "Confirm my order", "Order now", "Proceed with the order"
+      ],
+      "responses": ["Order placed! Your order id is {order_id}.", "Done! Your order is confirmed."]
     },
     {
       "tag": "track_order",
-      "patterns": ["where is my order", "track my order", "order status", "is my food on the way"],
-      "responses": ["You can track your order in the 'My Orders' section 📦", "Check the live status of your order in your dashboard."]
+      "patterns": [
+        "Where is my order", "Track my order", "Order status", "Is my food on the way", "Track 1001", "Check my delivery"
+      ],
+      "responses": ["You can track your order in the 'My Orders' section 📦", "Check live status in dashboard."]
     },
     {
-      "tag": "cancel_order",
-      "patterns": ["cancel my order", "I want to cancel", "can I cancel order", "cancel food"],
-      "responses": ["Your order can be cancelled from 'My Orders' within 5 minutes after placing.", "Sure! Go to 'My Orders' and tap 'Cancel Order'."]
+      "tag": "thanks",
+      "patterns": ["thanks", "thank you", "thx", "thanks a lot", "appreciate it"],
+      "responses": ["You're welcome! 😊", "Anytime! Glad to help."]
     },
     {
-      "tag": "restaurant_info",
-      "patterns": ["tell me about FoodIn", "what is FoodIn", "who created this website", "what do you do"],
-      "responses": ["FoodIn helps you find restaurants, pre-order food, and book tables easily 🍽️", "FoodIn is a smart restaurant platform designed for smooth ordering and dining experiences."]
+      "tag": "goodbye",
+      "patterns": ["bye", "see you", "goodbye", "take care", "see you later"],
+      "responses": ["Goodbye! Have a great day!", "See you soon! 👋"]
     },
     {
       "tag": "fallback",

@@ -14,14 +14,16 @@ from chatbot.response_generator import choose_response
 
 # config
 MODEL_DIR = Path("data")
-PREDICTION_THRESHOLD = 0.45
+PREDICTION_THRESHOLD = 0.25
 
 app = Flask(__name__)
 CORS(app)
 
 # initialize model loader + predictor
 model_loader = ModelLoader()
+# predictor = IntentPredictor(model_loader, threshold=PREDICTION_THRESHOLD)
 predictor = IntentPredictor(model_loader, threshold=PREDICTION_THRESHOLD)
+
 
 # ---------- Chat endpoint ----------
 @app.route("/chat", methods=["POST"])
