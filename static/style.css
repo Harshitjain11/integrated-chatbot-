@@ -1,3 +1,7 @@
+:root{
+  --bg-color: 222.2 84% 4.9%;
+  
+}
 body {
   background: linear-gradient(135deg, #0e0e0e, #2c2c2c);
   font-family: "Poppins", sans-serif;
@@ -12,7 +16,7 @@ body {
 .chat-container {
   width: 400px;
   height: 550px;
-  background: #1b1b1b;
+  background:hsl(var(--bg-color));
   border-radius: 20px;
   display: flex;
   flex-direction: column;
