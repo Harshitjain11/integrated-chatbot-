@@ -85,3 +85,17 @@ body {
 .chat-input button:hover {
   background: #ff7b5f;
 }
+
+.chat-input button#mic-btn {
+  background: #333;
+  color: #ff6347;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+  padding: 0 15px;
+  transition: 0.2s;
+}
+.chat-input button#mic-btn:hover {
+  background: #444;
+  color: #ff7b5f;
+}

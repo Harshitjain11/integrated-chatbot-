@@ -13,44 +13,99 @@
 
     <div class="chat-input">
       <input type="text" id="user-input" placeholder="Type your message..." autocomplete="off">
-      <button id="send-btn">Send</button>
+  <button id="mic-btn">🎤</button>
+  <button id="send-btn">Send</button>
     </div>
   </div>
+<script>
+const input = document.getElementById("user-input");
+const btn = document.getElementById("send-btn");
+const micBtn = document.getElementById("mic-btn");
+const messages = document.getElementById("chat-messages");
 
-  <script>
-    const input = document.getElementById("user-input");
-    const btn = document.getElementById("send-btn");
-    const messages = document.getElementById("chat-messages");
+// 🧩 Append message to chat box
+function appendMessage(sender, text) {
+  const msg = document.createElement("div");
+  msg.className = sender === "user" ? "user-msg" : "bot-msg";
+  msg.textContent = text;
+  messages.appendChild(msg);
+  messages.scrollTop = messages.scrollHeight;
+}
 
-    function appendMessage(sender, text) {
-      const msg = document.createElement("div");
-      msg.className = sender === "user" ? "user-msg" : "bot-msg";
-      msg.textContent = text;
-      messages.appendChild(msg);
-      messages.scrollTop = messages.scrollHeight;
-    }
+// 🚀 Send message to backend (Flask)
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
 
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text) return;
+  appendMessage("user", text);
+  input.value = "";
 
-      appendMessage("user", text);
-      input.value = "";
+  const response = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "harshit", message: text })
+  });
 
-      const response = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: "harshit", message: text })
-      });
+  const data = await response.json();
+  const botReply = data.reply || "Sorry, I didn’t get that.";
+  appendMessage("bot", botReply);
 
-      const data = await response.json();
-      appendMessage("bot", data.reply || "Sorry, I didn't get that.");
-    }
+  // 🔊 Speak bot reply aloud
+  speak(botReply);
+}
 
-    btn.addEventListener("click", sendMessage);
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendMessage();
-    });
-  </script>
+// 🗣️ Voice Recognition (Speech to Text)
+let recognition;
+if ('webkitSpeechRecognition' in window) {
+  recognition = new webkitSpeechRecognition();
+  recognition.continuous = false;
+  recognition.lang = "en-IN"; // or "hi-IN"
+  recognition.interimResults = false;
+
+  recognition.onstart = function() {
+    micBtn.textContent = "🎙️"; // active icon
+  };
+
+  recognition.onresult = function(event) {
+    const transcript = event.results[0][0].transcript;
+    input.value = transcript; // just show text, don't send yet
+    appendMessage("user", "[🎤 Recognized]: " + transcript); // show feedback
+  };
+
+  recognition.onend = function() {
+    micBtn.textContent = "🎤"; // reset icon
+  };
+
+  recognition.onerror = function(event) {
+    console.error("Voice recognition error:", event.error);
+    micBtn.textContent = "🎤";
+  };
+}
+
+micBtn.addEventListener("click", () => {
+  if (recognition) {
+    recognition.start();
+  } else {
+    alert("Voice recognition not supported in this browser.");
+  }
+});
+
+
+btn.addEventListener("click", sendMessage);
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+// 🔈 Text to Speech (Bot voice reply)
+function speak(text) {
+  if (!text) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-IN"; // or "hi-IN" for Hindi
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+</script>
+
 </body>
 </html>
