@@ -14,7 +14,7 @@ body {
 }
 
 .chat-container {
-  width: 400px;
+  width: 500px;
   height: 550px;
   background:hsl(var(--bg-color));
   border-radius: 20px;
@@ -98,4 +98,31 @@ body {
 .chat-input button#mic-btn:hover {
   background: #444;
   color: #ff7b5f;
+}
+.toggle-btn {
+  background: #ff6347;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-left: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: .2s;
+}
+.toggle-btn.off {
+  background: #333;
+  color: #aaa;
+}
+
+.send-btn{
+  background: #ff6347;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-left: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: .2s;
 }

@@ -23,7 +23,7 @@ const btn = document.getElementById("send-btn");
 const micBtn = document.getElementById("mic-btn");
 const messages = document.getElementById("chat-messages");
 
-// 🧩 Append message to chat box
+// Append message bubble
 function appendMessage(sender, text) {
   const msg = document.createElement("div");
   msg.className = sender === "user" ? "user-msg" : "bot-msg";
@@ -32,79 +32,78 @@ function appendMessage(sender, text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-// 🚀 Send message to backend (Flask)
-async function sendMessage() {
-  const text = input.value.trim();
+// Send message to backend
+async function sendMessage(customText = null) {
+  const text = customText || input.value.trim();
   if (!text) return;
-
   appendMessage("user", text);
   input.value = "";
-
-  const response = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: "harshit", message: text })
-  });
-
-  const data = await response.json();
-  const botReply = data.reply || "Sorry, I didn’t get that.";
-  appendMessage("bot", botReply);
-
-  // 🔊 Speak bot reply aloud
-  speak(botReply);
-}
-
-// 🗣️ Voice Recognition (Speech to Text)
-let recognition;
-if ('webkitSpeechRecognition' in window) {
-  recognition = new webkitSpeechRecognition();
-  recognition.continuous = false;
-  recognition.lang = "en-IN"; // or "hi-IN"
-  recognition.interimResults = false;
-
-  recognition.onstart = function() {
-    micBtn.textContent = "🎙️"; // active icon
-  };
-
-  recognition.onresult = function(event) {
-    const transcript = event.results[0][0].transcript;
-    input.value = transcript; // just show text, don't send yet
-    appendMessage("user", "[🎤 Recognized]: " + transcript); // show feedback
-  };
-
-  recognition.onend = function() {
-    micBtn.textContent = "🎤"; // reset icon
-  };
-
-  recognition.onerror = function(event) {
-    console.error("Voice recognition error:", event.error);
-    micBtn.textContent = "🎤";
-  };
-}
-
-micBtn.addEventListener("click", () => {
-  if (recognition) {
-    recognition.start();
-  } else {
-    alert("Voice recognition not supported in this browser.");
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: "harshit", message: text })
+    });
+    const data = await res.json();
+    const botReply = data.reply || "Sorry, I didn’t get that.";
+    appendMessage("bot", botReply);
+    speak(botReply);
+  } catch {
+    appendMessage("bot", "⚠️ Connection problem, please try again.");
   }
-});
+}
 
-
-btn.addEventListener("click", sendMessage);
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage();
-});
-
-// 🔈 Text to Speech (Bot voice reply)
+// Voice output
 function speak(text) {
   if (!text) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-IN"; // or "hi-IN" for Hindi
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  window.speechSynthesis.speak(utterance);
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-IN";
+  window.speechSynthesis.speak(u);
 }
+
+// ========  Voice Recognition  ========
+let recognition;
+let autoSend = true;
+
+// Create small toggle button
+const toggleBtn = document.createElement("button");
+toggleBtn.textContent = "🎙️ Auto Send ON";
+toggleBtn.className = "toggle-btn";
+document.querySelector(".chat-input").appendChild(toggleBtn);
+
+toggleBtn.addEventListener("click", () => {
+  autoSend = !autoSend;
+  toggleBtn.textContent = autoSend ? "🎙️ Auto Send ON" : "🎙️ Manual Mode";
+  toggleBtn.classList.toggle("off", !autoSend);
+});
+
+if ("webkitSpeechRecognition" in window) {
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = "en-IN";
+  recognition.interimResults = false;
+
+  recognition.onstart = () => (micBtn.textContent = "🎙️");
+  recognition.onend = () => (micBtn.textContent = "🎤");
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.trim();
+    if (!transcript) return;
+    // 👇 Only one clean user bubble
+    if (autoSend) {
+      appendMessage("user", transcript);
+      // setTimeout(() => sendMessage(transcript), 800);
+      setTimeout(() => sendMessage(transcript), 500);
+    } else {
+      input.value = transcript;
+    }
+  };
+}
+micBtn.addEventListener("click", () =>
+  recognition ? recognition.start() : alert("Speech not supported.")
+);
+
+btn.addEventListener("click", () => sendMessage());
+input.addEventListener("keypress", (e) => e.key === "Enter" && sendMessage());
 </script>
 
 </body>
