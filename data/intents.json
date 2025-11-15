@@ -3,52 +3,131 @@
     {
       "tag": "greeting",
       "patterns": [
-        "hi", "hello", "hey", "good morning", "good evening", "yo", "what's up", "hey there", "hi there", "howdy"
+        "hi", "hello", "hey", "good morning", "good evening", "yo",
+        "whats up", "hey there", "hi there", "howdy",
+        "namaste", "hello bot"
       ],
-      "responses": ["Hello! How can I help you today?", "Hi there! What would you like to do today?"]
+      "responses": [
+        "Hello! How can I help you today?",
+        "Hi there! What would you like to do?"
+      ]
     },
+
     {
       "tag": "new_order",
       "patterns": [
-        "I want to order", "Order food", "Can I order", "Place an order", "I want food", "Order something", "I need to order food", "Get me some food"
+        "I want to order", "order food", "can I order",
+        "place an order", "start order", "i want food",
+        "order something", "get me some food",
+        "let me order", "i want to buy food"
       ],
-      "responses": ["Sure, what would you like to order?", "Let's start your order! What would you like to have?"]
+      "responses": [
+        "Sure! What would you like to order?",
+        "Let's start your order! Tell me what you'd like."
+      ]
     },
+
     {
       "tag": "order_item",
       "patterns": [
-        "Add pizza", "1 burger", "Get me fries", "Add dosa", "I want samosa", "Order 2 cokes", "I want to add biryani", "Add sandwich"
+        "add pizza", "add 2 pizzas", "get me fries",
+        "order coke", "i want samosa", "i want to add biryani",
+        "add sandwich", "i want burger", "give me pasta",
+        "i want to eat dosa", "add two cokes", "bring 3 burgers",
+        "add two pizzas and one coke", "i want paneer tikka"
       ],
-      "responses": ["Item added to cart! Want to add more or confirm?", "Got it! Added to your order."]
+      "responses": [
+        "Item added to cart! Want to add more?",
+        "Added to your order!"
+      ]
     },
+
+    {
+      "tag": "remove_item",
+      "patterns": [
+        "remove pizza", "remove one coke", "remove my burger",
+        "delete my coke", "take away fries", "remove dosa",
+        "remove the biryani", "remove sandwich",
+        "delete item", "remove it"
+      ],
+      "responses": [
+        "Item removed from your cart.",
+        "Done! Removed it."
+      ]
+    },
+
     {
       "tag": "confirm_order",
       "patterns": [
-        "Confirm", "Place order", "Yes confirm", "Confirm my order", "Order now", "Proceed with the order"
+        "confirm", "place order", "yes confirm", "confirm my order",
+        "order now", "proceed with order", "place it", "checkout"
       ],
-      "responses": ["Order placed! Your order id is {order_id}.", "Done! Your order is confirmed."]
+      "responses": [
+        "Order confirmed!",
+        "Your order is placed!"
+      ]
     },
+
     {
       "tag": "track_order",
       "patterns": [
-        "Where is my order", "Track my order", "Order status", "Is my food on the way", "Track 1001", "Check my delivery"
+        "where is my order", "track my order", "order status",
+        "is my food on the way", "track 1001", "track order",
+        "check my delivery status", "track my food"
       ],
-      "responses": ["You can track your order in the 'My Orders' section 📦", "Check live status in dashboard."]
+      "responses": [
+        "You can track your order using ID.",
+        "Tell me your order ID to track it."
+      ]
     },
+
+    {
+      "tag": "cancel_order",
+      "patterns": [
+        "cancel my order", "cancel order", "i want to cancel",
+        "cancel 1002", "stop my order", "i don't want it",
+        "cancel this order"
+      ],
+      "responses": [
+        "Okay, cancelling your order.",
+        "Your order will be cancelled."
+      ]
+    },
+
+    {
+      "tag": "book_table",
+      "patterns": [
+        "book a table", "reserve a table", "table for 2",
+        "i want to book a table", "table booking", "i need a table",
+        "reserve table for 4", "book table for three",
+        "book table at 8 pm", "i want seats", "book a seat",
+        "i want to dine in", "book a table for dinner",
+        "book table at 7"
+      ],
+      "responses": [
+        "Sure! Let me help you with booking.",
+        "Okay, booking your table."
+      ]
+    },
+
     {
       "tag": "thanks",
       "patterns": ["thanks", "thank you", "thx", "thanks a lot", "appreciate it"],
-      "responses": ["You're welcome! 😊", "Anytime! Glad to help."]
+      "responses": ["You're welcome!", "Glad to help!"]
     },
+
     {
       "tag": "goodbye",
       "patterns": ["bye", "see you", "goodbye", "take care", "see you later"],
       "responses": ["Goodbye! Have a great day!", "See you soon! 👋"]
     },
+
     {
       "tag": "fallback",
       "patterns": [],
-      "responses": ["I'm not sure I understood that. I can help you order food, track orders, or answer FAQs."]
+      "responses": [
+        "I'm not sure I understood that. I can help you order food, track orders, or book tables."
+      ]
     }
   ]
 }

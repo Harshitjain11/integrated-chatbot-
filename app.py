@@ -1,148 +1,217 @@
 # app.py
-from flask import Flask, request, jsonify
-from flask import render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from pathlib import Path
 import re
+from datetime import datetime
 
+# ---- Chatbot files ----
 from chatbot.model_loader import ModelLoader
 from chatbot.intent_predictor import IntentPredictor
-from chatbot.entity_extractor import extract_order_id, extract_quantity, extract_item_name
-from chatbot.session_manager import get_session, clear_temp_order, dump_sessions
-from chatbot.order_manager import create_order, get_order, dump_orders
+from chatbot.entity_extractor import (
+    extract_items, extract_booking, extract_order_id
+)
+from chatbot.session_manager import get_session, dump_sessions
+from chatbot.order_manager import (
+    create_order_record, get_order, cancel_order,
+    create_booking, list_orders_for_user
+)
 from chatbot.response_generator import choose_response
 
-# config
-MODEL_DIR = Path("data")
+# ---- Config ----
 PREDICTION_THRESHOLD = 0.25
 
 app = Flask(__name__)
 CORS(app)
 
-# initialize model loader + predictor
+# ---- Load ML ----
 model_loader = ModelLoader()
-# predictor = IntentPredictor(model_loader, threshold=PREDICTION_THRESHOLD)
 predictor = IntentPredictor(model_loader, threshold=PREDICTION_THRESHOLD)
 
 
-# ---------- Chat endpoint ----------
+# =================================================================
+#                           CHAT ENDPOINT
+# =================================================================
 @app.route("/chat", methods=["POST"])
 def chat():
-    payload = request.get_json(force=True, silent=True)
+    payload = request.get_json(silent=True)
+
     if not payload:
-        return jsonify({"error": "Invalid JSON"}), 400
+        return jsonify({"reply": "Invalid request"}), 400
 
     user_id = str(payload.get("user_id", "anonymous"))
-    message = str(payload.get("message", "")).strip()
-    if message == "":
-        return jsonify({"reply": "Please type something so I can help.", "intent": None})
+    message = payload.get("message", "").strip()
+
+    if not message:
+        return jsonify({"reply": "Please type something."})
 
     session = get_session(user_id)
 
-    # quick extract: if user sends an order id directly, check orders
+    # 0️⃣ If user typed an order ID directly
     possible_oid = extract_order_id(message)
     if possible_oid:
         order = get_order(possible_oid)
         if order:
-            reply = f"Order #{possible_oid} — {order['items']} — Status: {order['status']}"
-            return jsonify({"reply": reply, "intent": "track_order", "confidence": 0.99})
+            items_text = ", ".join([f"{i['qty']}x {i['name']}" for i in order["items"]])
+            reply = f"Order #{order['order_id']} — {items_text} — Status: {order['status']}"
+            return jsonify({"reply": reply, "intent": "track_order"})
 
-    # predict intent
-    tag, conf = predictor.predict(message)
+    # 1️⃣ Predict intent
+    tag, conf = predictor.predict(message.lower())
 
-    # fallback handling
+    # =================================================================
+    #                       INTENT: FALLBACK
+    # =================================================================
     if tag == "fallback":
-        # small heuristics to help
-        if "track" in message.lower() and possible_oid:
-            order = get_order(possible_oid)
-            if order:
-                reply = f"Order #{possible_oid}: {order['items']} — Status: {order['status']}"
-                return jsonify({"reply": reply, "intent": "track_order", "confidence": 0.99})
-        fallback_text = choose_response("fallback") or "I didn't get that. I can help with ordering or tracking orders. Try 'order' or 'track <order_id>'."
-        session["last_intent"] = "fallback"
-        session["last_bot_msg"] = fallback_text
-        return jsonify({"reply": fallback_text, "intent": "fallback", "confidence": conf})
+        fb = choose_response("fallback") or "Sorry, I didn't understand."
+        return jsonify({"reply": fb, "intent": "fallback", "confidence": conf})
 
-    # NEW ORDER flow
+    # =================================================================
+    #                       INTENT: NEW ORDER
+    # =================================================================
     if tag == "new_order":
+        session["temp_order"] = {"items": []}
         session["last_intent"] = "new_order"
-        session["temp_order"] = {"items": [], "restaurant": None}
-        reply = choose_response("new_order") or "Sure — what would you like to order?"
-        session["last_bot_msg"] = reply
-        return jsonify({"reply": reply, "intent": "new_order", "confidence": conf})
+        return jsonify({"reply": "Sure! What would you like to order?", "intent": tag})
 
-    # ITEM ADDED (order_item) or user continuing after new_order
+    # =================================================================
+    #                       INTENT: ADD ITEM
+    # =================================================================
+    # ============================ ADD ITEM =============================
     if tag == "order_item" or session.get("last_intent") == "new_order":
-        qty = extract_quantity(message) or 1
-        item = extract_item_name(message) or "item"
-        temp = session.get("temp_order", {"items": []})
-        temp_items = temp.get("items", [])
-        temp_items.append({"name": item, "qty": qty})
-        temp["items"] = temp_items
+
+        items = extract_items(message)
+
+        if not items:
+            return jsonify({"reply": "I couldn't understand which item to add."})
+
+        # ensure temp_order has items list
+        temp = session.get("temp_order", {})
+
+        if "items" not in temp:
+            temp["items"] = []
+
+        temp["items"].extend(items)
+
         session["temp_order"] = temp
         session["last_intent"] = "order_item"
-        reply = f"Added {qty} x {item} to your cart. Say 'confirm' to place order or add more items."
-        session["last_bot_msg"] = reply
-        return jsonify({"reply": reply, "intent": "order_item", "confidence": conf})
 
-    # CONFIRM ORDER (detect via intent or keywords)
-    if tag == "confirm_order" or re.search(r"\b(confirm|place order|yes confirm|place it|confirm order)\b", message, flags=re.I):
-        temp = session.get("temp_order") or {}
-        items = temp.get("items", [])
+        added_text = ", ".join([f"{it['qty']} x {it['name']}" for it in items])
+        return jsonify({"reply": f"Added {added_text}. Say 'confirm' to place order."})
+
+    # =================================================================
+    #                       INTENT: REMOVE ITEM
+    # =================================================================
+    if tag == "remove_item":
+        to_remove = extract_items(message)
+        temp = session.get("temp_order", {"items": []})
+        existing = temp["items"]
+
+        removed = []
+
+        for r in to_remove:
+            for e in existing[:]:
+                if e["name"].lower() == r["name"].lower():
+                    if e["qty"] > r["qty"]:
+                        e["qty"] -= r["qty"]
+                    else:
+                        existing.remove(e)
+                    removed.append(r["name"])
+                    break
+
+        session["temp_order"]["items"] = existing
+
+        if removed:
+            return jsonify({"reply": f"Removed: {', '.join(removed)}"})
+        else:
+            return jsonify({"reply": "Item not found in your cart."})
+
+    # =================================================================
+    #                       INTENT: CONFIRM ORDER
+    # =================================================================
+    if tag == "confirm_order" or re.search(r"\b(confirm|place|yes)\b", message, re.I):
+        items = session.get("temp_order", {}).get("items", [])
+
         if not items:
-            reply = "There are no items in your cart. Tell me what you want to order."
-            session["last_bot_msg"] = reply
-            return jsonify({"reply": reply, "intent": "confirm_order", "confidence": conf})
-        # naive pricing: 99 per item (demo). Replace with DB price lookup later.
-        total = sum(it.get("qty",1) * 99 for it in items)
-        oid, order = create_order(user_id, items, total)
-        # clear temp order
+            return jsonify({"reply": "Your cart is empty."})
+
+        total = sum(i["qty"] * 99 for i in items)  # demo pricing
+        oid, order = create_order_record(user_id, items, total)
+
         session["temp_order"] = {}
         session["last_intent"] = None
-        reply = f"Order placed! Your order id is {oid}. Total ₹{total:.2f}. Use 'track {oid}' to follow progress."
-        session["last_bot_msg"] = reply
-        return jsonify({"reply": reply, "intent": "confirm_order", "order_id": oid, "confidence": 0.99})
 
-    # TRACK ORDER flow
+        return jsonify({
+            "reply": f"Order placed! ID {oid}. Total ₹{total}. Use 'track {oid}'.",
+            "intent": "confirm_order"
+        })
+
+    # =================================================================
+    #                       INTENT: TRACK ORDER
+    # =================================================================
     if tag == "track_order":
         oid = extract_order_id(message)
         if not oid:
-            ask = choose_response("track_order") or "Please provide your order id (e.g., 1001)."
-            session["last_bot_msg"] = ask
-            session["last_intent"] = "track_order"
-            return jsonify({"reply": ask, "intent": "track_order", "confidence": conf})
+            return jsonify({"reply": "Please give an order ID."})
+
         order = get_order(oid)
         if not order:
-            reply = f"I couldn't find order #{oid}. Please check the ID."
-            session["last_bot_msg"] = reply
-            return jsonify({"reply": reply, "intent": "track_order", "confidence": conf})
-        reply = f"Order #{oid}: {order['items']} — Status: {order['status']} (placed {order['created_at']})"
-        session["last_bot_msg"] = reply
-        session["last_intent"] = None
-        return jsonify({"reply": reply, "intent": "track_order", "order": order, "confidence": 0.99})
+            return jsonify({"reply": f"No order found for ID {oid}."})
 
-    # Generic mapped responses (greeting, thanks, about_site, goodbye, etc.)
+        items_text = ", ".join([f"{i['qty']}x {i['name']}" for i in order["items"]])
+        return jsonify({"reply": f"Order #{oid}: {items_text} — Status: {order['status']}"})
+
+    # =================================================================
+    #                       INTENT: CANCEL ORDER
+    # =================================================================
+    if tag == "cancel_order":
+        oid = extract_order_id(message)
+
+        if not oid:
+            orders = list_orders_for_user(user_id)
+            if orders:
+                oid = orders[0]["order_id"]
+
+        if not oid:
+            return jsonify({"reply": "Which order should I cancel?"})
+
+        cancel_order(oid)
+        return jsonify({"reply": f"Order #{oid} has been cancelled."})
+
+    # =================================================================
+    #                       INTENT: TABLE BOOKING
+    # =================================================================
+    if tag == "book_table":
+        b = extract_booking(message)
+
+        people = b.get("people") or 2
+        tm = b.get("time") or "19:00"
+        dt = b.get("date") or datetime.utcnow().date().isoformat()
+        pref = b.get("preference")
+
+        booking = create_booking(user_id, people, dt, tm, pref)
+
+        return jsonify({
+            "reply": f"Table booked for {people} at {tm}. Booking ID {booking['booking_id']}.",
+            "intent": "book_table"
+        })
+
+    # =================================================================
+    #                DEFAULT GENERIC RESPONSE
+    # =================================================================
     resp = choose_response(tag)
     if resp:
-        session["last_bot_msg"] = resp
-        session["last_intent"] = tag
-        return jsonify({"reply": resp, "intent": tag, "confidence": conf})
+        return jsonify({"reply": resp})
 
-    # final fallback
-    fb = choose_response("fallback") or "Sorry, I couldn't process that."
-    session["last_bot_msg"] = fb
-    session["last_intent"] = "fallback"
-    return jsonify({"reply": fb, "intent": "fallback", "confidence": conf})
+    return jsonify({"reply": "Sorry, I didn't get that."})
 
-# debug routes
-@app.route("/_sessions", methods=["GET"])
-def _sessions():
-    return jsonify({"sessions": dump_sessions()})
 
-@app.route("/_orders", methods=["GET"])
-def _orders():
-    return jsonify({"orders": dump_orders()})
-from flask import render_template
+# =================================================================
+# DEBUG ROUTES
+# =================================================================
+@app.route("/_sessions")
+def debug_sessions():
+    return jsonify(dump_sessions())
+
 
 @app.route("/")
 def home():
@@ -150,4 +219,4 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(debug=True, port=5000)
