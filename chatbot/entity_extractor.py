@@ -13,7 +13,7 @@ Provides:
 """
 
 import re
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from difflib import get_close_matches
 
 # try spaCy
@@ -203,14 +203,15 @@ def extract_booking(text):
 
     # date (simple parse for today/tomorrow or explicit date dd-mm or words)
     if re.search(r"\btomorrow\b", text, flags=re.I):
-        tomorrow = date.today().toordinal() + 1
-        dt = (date.today() + (datetime.utcnow() - datetime.utcnow())).isoformat()[:10]  # fallback - keep None for now
-    # simple explicit date detection (like 2023-12-31 or 31/12)
+        dt = (date.today() + timedelta(days=1)).isoformat()
+    elif re.search(r"\btoday\b|\btonight\b", text, flags=re.I):
+        dt = date.today().isoformat()
+
+    # explicit ISO date like 2023-12-31
     m = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
     if m:
         dt = m.group(1)
-
-    # preference (near window, outdoor, indoor)
+    
     pref_m = re.search(r"\b(window|near window|outdoor|inside|indoor|corner)\b", text, flags=re.I)
     if pref_m:
         preference = pref_m.group(1).lower()
